@@ -74,7 +74,7 @@ function App() {
     <nav><div className="brand"><span className="mark">↗</span><span>CODEBASE GPS</span></div><span className="status-dot">{status?.status ?? "READY"}</span></nav>
     <section className="hero"><p className="eyebrow">OPEN SOURCE NAVIGATION SYSTEM</p><h1>Know where<br/>your code goes.</h1><p>Index an unfamiliar repository, trace its relationships, and investigate changes with confidence.</p></section>
     <section className="import-panel">
-      <form onSubmit={index}><label>GITHUB REPOSITORY<input value={repoUrl} onChange={e => setRepoUrl(e.target.value)} placeholder="https://github.com/owner/repo"/></label><label>BRANCH<input value={branch} onChange={e => setBranch(e.target.value)} placeholder="main"/></label><button disabled={busy}>{busy ? "WORKING…" : "MAP CODEBASE →"}</button></form>
+      <form onSubmit={index}><label>GITHUB REPOSITORY<input value={repoUrl} onChange={e => setRepoUrl(e.target.value)} placeholder="https://github.com/owner/repo"/></label><label>BRANCH<input value={branch} onChange={e => setBranch(e.target.value)} placeholder="main"/></label><button disabled={busy || status?.status === "queued" || status?.status === "processing"}>{busy ? "WORKING…" : status?.status === "queued" || status?.status === "processing" ? "INDEXING…" : "MAP CODEBASE →"}</button></form>
       {status && <div className="progress"><div><b>{status.current_stage.replaceAll("_", " ")}</b><span>{status.progress}%</span></div><i><em style={{ width: `${status.progress}%` }}/></i></div>}
       {error && <p className="error">{error}</p>}
     </section>
