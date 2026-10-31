@@ -3,7 +3,6 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from app.models.schemas import IndexRequest, IndexResponse, StatusResponse, RepoDetailResponse, SearchResponse, SearchResultItem, SymbolDetailResponse, IssueAnalyzeRequest, IssueInvestigationReport, ImpactRequest, ImpactReport
 from app.models.graph import GraphResponse, GraphNode, GraphEdge
 from app.services.repo_validation import validate_repo_url, validate_branch
-from app.services.github_client import GitHubClient
 from app.services.indexing_service import run_indexing_pipeline
 from app.services.issue_service import analyze_issue
 from app.services.impact_service import analyze_impact
@@ -15,8 +14,6 @@ router = APIRouter(prefix="/api/repos", tags=["repositories"])
 async def index_repository(payload: IndexRequest, background_tasks: BackgroundTasks):
     owner, repo, normalized_url = validate_repo_url(payload.repo_url)
     clean_branch = validate_branch(payload.branch)
-    github = GitHubClient()
-    await github.get_repo_metadata(owner, repo)
     repo_id = str(uuid.uuid4())[:8]
     with get_db_connection() as conn:
         conn.execute("INSERT INTO repositories (id, owner, name, url, branch, status, current_stage, progress) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (repo_id, owner, repo, normalized_url, clean_branch, "queued", "queued", 0))
