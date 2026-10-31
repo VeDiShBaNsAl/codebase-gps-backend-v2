@@ -18,6 +18,19 @@ def test_root_identifies_the_api_and_documents_available_routes():
     }
 
 
+def test_vercel_frontend_origin_is_allowed_for_preflight_requests():
+    response = client.options(
+        "/api/repos/index",
+        headers={
+            "Origin": "https://codebase-gps-backend-v2.vercel.app",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "https://codebase-gps-backend-v2.vercel.app"
+
+
 def test_status_includes_indexing_failure_reason(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "data_dir", str(tmp_path))
     monkeypatch.setattr(settings, "database_url", str(tmp_path / "test.db"))

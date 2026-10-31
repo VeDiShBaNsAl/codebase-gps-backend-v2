@@ -10,7 +10,11 @@ from app.database.db import init_db
 
 logging.basicConfig(level=settings.log_level)
 app = FastAPI(title="Codebase GPS API", version="0.1.0")
-app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+frontend_origins = sorted({
+    *settings.cors_origins,
+    "https://codebase-gps-backend-v2.vercel.app",
+})
+app.add_middleware(CORSMiddleware, allow_origins=frontend_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 
 @app.get("/", tags=["health"])
