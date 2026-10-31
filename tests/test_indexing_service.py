@@ -1,7 +1,15 @@
+import asyncio
+import subprocess
+
+import pytest
+from fastapi import BackgroundTasks
+
+from app.api.repos import index_repository
 from app.config.settings import settings
 from app.database.db import get_db_connection, init_db
 from app.models.graph import GraphNode
-from app.services import indexing_service
+from app.models.schemas import IndexRequest
+from app.services import indexing_service, ingestion_service
 
 
 def test_indexing_completes_without_opening_a_second_write_transaction(tmp_path, monkeypatch):
@@ -27,12 +35,6 @@ def test_indexing_completes_without_opening_a_second_write_transaction(tmp_path,
         symbols = conn.execute("SELECT COUNT(*) AS count FROM symbols_fts WHERE repo_id = 'repo1'").fetchone()
     assert dict(repo) == {"status": "completed", "progress": 100}
     assert symbols["count"] == 1
-import asyncio
-
-from fastapi import BackgroundTasks
-
-from app.api.repos import index_repository
-from app.models.schemas import IndexRequest
 
 
 def test_index_request_reuses_an_in_progress_job(tmp_path, monkeypatch):
@@ -51,3 +53,37 @@ def test_index_request_reuses_an_in_progress_job(tmp_path, monkeypatch):
     assert response.repo_id == "existing"
     assert response.status == "processing"
     assert not tasks.tasks
+
+
+def test_clone_disables_interactive_git_prompts_and_uses_shallow_clone(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "data_dir", str(tmp_path))
+    calls = {}
+
+    def run(command, **kwargs):
+        calls["command"] = command
+        calls["kwargs"] = kwargs
+
+    monkeypatch.setattr(ingestion_service.subprocess, "run", run)
+
+    destination = ingestion_service.clone_repository("https://github.com/owner/repo", "main", "repo1")
+
+    assert destination == str(tmp_path / "repos" / "repo1")
+    assert "--single-branch" in calls["command"]
+    assert "--no-tags" in calls["command"]
+    assert "--filter=blob:none" in calls["command"]
+    assert calls["kwargs"]["env"]["GIT_TERMINAL_PROMPT"] == "0"
+    assert calls["kwargs"]["env"]["GIT_ASKPASS"] == "/bin/false"
+
+
+def test_clone_removes_partial_checkout_after_timeout(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "data_dir", str(tmp_path))
+
+    def timeout(*_args, **_kwargs):
+        raise subprocess.TimeoutExpired("git clone", 1)
+
+    monkeypatch.setattr(ingestion_service.subprocess, "run", timeout)
+
+    with pytest.raises(Exception, match="Repository clone timed out"):
+        ingestion_service.clone_repository("https://github.com/owner/repo", "main", "repo1")
+
+    assert not (tmp_path / "repos" / "repo1").exists()    
