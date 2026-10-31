@@ -14,7 +14,6 @@ frontend_origins = sorted({
     *settings.cors_origins,
     "https://codebase-gps-backend-v2.vercel.app",
 })
-app.add_middleware(CORSMiddleware, allow_origins=frontend_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 
 @app.get("/", tags=["health"])
@@ -40,3 +39,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 app.include_router(health.router)
 app.include_router(repos.router)
+
+# Keep CORS outside FastAPI's server-error middleware. Otherwise an unhandled
+# issue-analysis error loses CORS headers and the frontend only sees
+# the misleading "Failed to fetch" message.
+app = CORSMiddleware(
+    app=app,
+    allow_origins=frontend_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)   
