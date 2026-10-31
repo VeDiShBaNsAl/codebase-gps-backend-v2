@@ -3,8 +3,19 @@ from app.main import app
 from app.config.settings import settings
 from app.database.db import get_db_connection, init_db
 client = TestClient(app)
+
+
 def test_health():
     assert client.get('/health').json() == {'status': 'ok'}
+
+
+def test_root_identifies_the_api_and_documents_available_routes():
+    assert client.get("/").json() == {
+        "service": "Codebase GPS API",
+        "status": "ok",
+        "health": "/health",
+        "docs": "/docs",
+    }
 
 
 def test_status_includes_indexing_failure_reason(tmp_path, monkeypatch):
