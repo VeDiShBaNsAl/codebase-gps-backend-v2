@@ -6,8 +6,10 @@ def analyze_repository(repository_path: str) -> dict:
     try:
         from code_intelligence import analyze_repository as real_analyze
         return real_analyze(repository_path)
-    except ImportError:
-        logger.warning("code_intelligence module not found. Using STUB analyzer.")
+    except ImportError as exc:
+        # This should only happen in deployments where the optional package was
+        # deliberately omitted; do not conceal analyzer defects as demo data.
+        logger.warning("code_intelligence module not found (%s). Using STUB analyzer.", exc)
         return {
             "nodes": [
                 GraphNode(id="file_main", type="FILE", name="main.py", file_path="main.py", start_line=1, end_line=50, language="python"),
