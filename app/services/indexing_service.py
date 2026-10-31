@@ -17,12 +17,12 @@ def run_indexing_pipeline(repo_id: str, repo_url: str, branch: str):
         update_stage("parsing", 40)
         res = analyze_repository(local_path)
         update_stage("building_graph", 70)
+        update_stage("indexing_search", 90)
         with get_db_connection() as conn:
             for node in res.get("nodes", []):
                 conn.execute("INSERT OR REPLACE INTO nodes VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (node.id, repo_id, node.type, node.name, node.file_path, node.start_line, node.end_line, node.language))
             for edge in res.get("edges", []):
                 conn.execute("INSERT INTO edges(repo_id, source, target, type, resolution, source_file, source_line) VALUES (?, ?, ?, ?, ?, ?, ?)", (repo_id, edge.source, edge.target, edge.type, edge.resolution, edge.source_file, edge.source_line))
-            update_stage("indexing_search", 90)
             for node in res.get("nodes", []):
                 conn.execute("INSERT INTO symbols_fts VALUES (?, ?, ?, ?, ?)", (repo_id, node.id, node.name, node.file_path, f"{node.type} {node.name}"))
             conn.execute("UPDATE repositories SET total_files = ?, total_symbols = ?, total_relationships = ?, languages = ? WHERE id = ?", (res.get("total_files", 0), res.get("total_symbols", 0), res.get("total_relationships", 0), json.dumps(res.get("languages", [])), repo_id))
