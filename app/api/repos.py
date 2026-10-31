@@ -14,6 +14,13 @@ router = APIRouter(prefix="/api/repos", tags=["repositories"])
 async def index_repository(payload: IndexRequest, background_tasks: BackgroundTasks):
     owner, repo, normalized_url = validate_repo_url(payload.repo_url)
     clean_branch = validate_branch(payload.branch)
+    with get_db_connection() as conn:
+        existing = conn.execute(
+            "SELECT id, status FROM repositories WHERE url = ? AND branch = ? AND status IN ('queued', 'processing') ORDER BY created_at DESC LIMIT 1",
+            (normalized_url, clean_branch),
+        ).fetchone()
+    if existing:
+        return IndexResponse(repo_id=existing["id"], status=existing["status"])
     repo_id = str(uuid.uuid4())[:8]
     with get_db_connection() as conn:
         conn.execute("INSERT INTO repositories (id, owner, name, url, branch, status, current_stage, progress) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (repo_id, owner, repo, normalized_url, clean_branch, "queued", "queued", 0))

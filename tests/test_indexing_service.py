@@ -27,3 +27,27 @@ def test_indexing_completes_without_opening_a_second_write_transaction(tmp_path,
         symbols = conn.execute("SELECT COUNT(*) AS count FROM symbols_fts WHERE repo_id = 'repo1'").fetchone()
     assert dict(repo) == {"status": "completed", "progress": 100}
     assert symbols["count"] == 1
+import asyncio
+
+from fastapi import BackgroundTasks
+
+from app.api.repos import index_repository
+from app.models.schemas import IndexRequest
+
+
+def test_index_request_reuses_an_in_progress_job(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "data_dir", str(tmp_path))
+    monkeypatch.setattr(settings, "database_url", str(tmp_path / "test.db"))
+    init_db()
+    with get_db_connection() as conn:
+        conn.execute(
+            "INSERT INTO repositories (id, owner, name, url, branch, status, current_stage, progress) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            ("existing", "owner", "repo", "https://github.com/owner/repo", "main", "processing", "cloning", 10),
+        )
+
+    tasks = BackgroundTasks()
+    response = asyncio.run(index_repository(IndexRequest(repo_url="https://github.com/owner/repo", branch="main"), tasks))
+
+    assert response.repo_id == "existing"
+    assert response.status == "processing"
+    assert not tasks.tasks
