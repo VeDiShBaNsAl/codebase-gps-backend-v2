@@ -22,3 +22,13 @@ class GitHubClient:
             elif response.status_code >= 400:
                 raise HTTPException(status_code=502, detail=f"GitHub API error: {response.status_code}")
             return response.json()
+
+    async def get_issue(self, owner: str, repo: str, number: int) -> dict:
+        url = f"https://api.github.com/repos/{owner}/{repo}/issues/{number}"
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(url, headers=self.headers)
+        if response.status_code == 404:
+            raise HTTPException(status_code=404, detail="GitHub issue not found.")
+        if response.status_code >= 400:
+            raise HTTPException(status_code=502, detail=f"GitHub API error: {response.status_code}")
+        return response.json()

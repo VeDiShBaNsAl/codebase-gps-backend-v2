@@ -73,7 +73,7 @@ async def analyze_repo_issue(repo_id: str, payload: IssueAnalyzeRequest):
         repo = conn.execute("SELECT local_path FROM repositories WHERE id = ?", (repo_id,)).fetchone()
         if not repo:
             raise HTTPException(status_code=404, detail="Repository not found.")
-        return analyze_issue(repo_id, payload.issue_url, repo["local_path"] or "")
+        return await analyze_issue(repo_id, payload)
 
 @router.post("/{repo_id}/impact", response_model=ImpactReport)
 async def analyze_repo_impact(repo_id: str, payload: ImpactRequest):
