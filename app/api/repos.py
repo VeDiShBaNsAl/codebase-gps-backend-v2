@@ -26,10 +26,10 @@ async def index_repository(payload: IndexRequest, background_tasks: BackgroundTa
 @router.get("/{repo_id}/status", response_model=StatusResponse)
 def get_repo_status(repo_id: str):
     with get_db_connection() as conn:
-        row = conn.execute("SELECT id, status, progress, current_stage FROM repositories WHERE id = ?", (repo_id,)).fetchone()
+        row = conn.execute("SELECT id, status, progress, current_stage, error FROM repositories WHERE id = ?", (repo_id,)).fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Repository not found.")
-        return StatusResponse(repo_id=row["id"], status=row["status"], progress=row["progress"], current_stage=row["current_stage"])
+        return StatusResponse(repo_id=row["id"], status=row["status"], progress=row["progress"], current_stage=row["current_stage"], error=row["error"])
 
 @router.get("/{repo_id}", response_model=RepoDetailResponse)
 def get_repo_detail(repo_id: str):
