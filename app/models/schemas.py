@@ -16,6 +16,7 @@ class StatusResponse(BaseModel):
     status: IndexStatus
     progress: int
     current_stage: str
+    error: str | None = None
 
 class RepoDetailResponse(BaseModel):
     repo_id: str

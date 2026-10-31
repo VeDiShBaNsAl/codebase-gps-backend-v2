@@ -4,13 +4,16 @@ import "./styles.css";
 
 type Node = { id: string; type: string; name: string; file_path: string; start_line: number; end_line: number; language: string };
 type Edge = { source: string; target: string; type: string; resolution: string; source_file: string; source_line: number };
-type Status = { repo_id: string; status: "queued" | "processing" | "completed" | "failed"; progress: number; current_stage: string };
+type Status = { repo_id: string; status: "queued" | "processing" | "completed" | "failed"; progress: number; current_stage: string; error?: string | null };
 type Graph = { nodes: Node[]; edges: Edge[] };
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API}${path}`, { headers: { "Content-Type": "application/json" }, ...init });
-  if (!response.ok) throw new Error((await response.json().catch(() => null))?.detail ?? `Request failed (${response.status})`);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error?.message ?? body?.detail ?? `Request failed (${response.status})`);
+  }
   return response.json() as Promise<T>;
 }
 
@@ -30,7 +33,11 @@ function App() {
   useEffect(() => {
     if (!repoId || status?.status === "completed" || status?.status === "failed") return;
     const poll = async () => {
-      try { setStatus(await request<Status>(`/api/repos/${repoId}/status`)); } catch (err) { setError(err instanceof Error ? err.message : "Unable to check indexing status"); }
+      try {
+        const nextStatus = await request<Status>(`/api/repos/${repoId}/status`);
+        setStatus(nextStatus);
+        if (nextStatus.status === "failed") setError(nextStatus.error || "Indexing failed. Please try another repository or branch.");
+      } catch (err) { setError(err instanceof Error ? err.message : "Unable to check indexing status"); }
     };
     poll(); const timer = window.setInterval(poll, 1800); return () => window.clearInterval(timer);
   }, [repoId, status?.status]);
