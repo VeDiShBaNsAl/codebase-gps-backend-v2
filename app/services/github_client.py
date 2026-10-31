@@ -26,7 +26,10 @@ class GitHubClient:
     async def get_issue(self, owner: str, repo: str, number: int) -> dict:
         url = f"https://api.github.com/repos/{owner}/{repo}/issues/{number}"
         async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(url, headers=self.headers)
+            try:
+                response = await client.get(url, headers=self.headers)
+            except httpx.RequestError as exc:
+                raise HTTPException(status_code=502, detail=f"Failed to communicate with GitHub API: {exc}")
         if response.status_code == 404:
             raise HTTPException(status_code=404, detail="GitHub issue not found.")
         if response.status_code >= 400:
