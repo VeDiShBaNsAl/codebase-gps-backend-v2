@@ -14,7 +14,6 @@ frontend_origins = sorted({
     *settings.cors_origins,
     "https://codebase-gps-backend-v2.vercel.app",
 })
-app.add_middleware(CORSMiddleware, allow_origins=frontend_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 
 @app.get("/", tags=["health"])
@@ -40,3 +39,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 app.include_router(health.router)
 app.include_router(repos.router)
+
+# Wrap the complete FastAPI app so CORS headers are retained on otherwise
+# unhandled errors. A middleware registered with ``add_middleware`` sits inside
+# Starlette's error middleware and cannot add headers to its 500 responses.
+app = CORSMiddleware(
+    app=app,
+    allow_origins=frontend_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)

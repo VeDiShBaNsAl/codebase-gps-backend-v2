@@ -31,6 +31,22 @@ def test_vercel_frontend_origin_is_allowed_for_preflight_requests():
     assert response.headers["access-control-allow-origin"] == "https://codebase-gps-backend-v2.vercel.app"
 
 
+def test_vercel_origin_is_preserved_on_an_unhandled_api_error():
+    def raise_unhandled_error():
+        raise RuntimeError("simulated investigation failure")
+
+    app.app.add_api_route("/_test/unhandled-error", raise_unhandled_error)
+    error_client = TestClient(app, raise_server_exceptions=False)
+
+    response = error_client.get(
+        "/_test/unhandled-error",
+        headers={"Origin": "https://codebase-gps-backend-v2.vercel.app"},
+    )
+
+    assert response.status_code == 500
+    assert response.headers["access-control-allow-origin"] == "https://codebase-gps-backend-v2.vercel.app"
+
+
 def test_status_includes_indexing_failure_reason(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "data_dir", str(tmp_path))
     monkeypatch.setattr(settings, "database_url", str(tmp_path / "test.db"))
